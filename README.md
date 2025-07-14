@@ -98,3 +98,45 @@ mvn spring-boot:run
 
 
 
+
+### Notes 
+A. UserRepositroy.java 
+1. DAO Layer - Handles all database interactions via repositories. Keeps persistence logic separate from business logic.
+2. JpaRepository<User, Long> - A Spring Data JPA interface giving you built-in CRUD methods for the User entity with Long as the primary key
+3. Optional<User> - A safe way to handle the case when a user is not found, without risking null
+
+B. UserService.java
+1. private final UserRepository userRepository;
+    -   private: means only this class can directly access this field
+    -   final: means the reference cannot be changed after it’s set once.
+    -   UserRepository: is the type of the object being referenced.
+    -   userRepository: is the name of the variable.
+    -   Declaring it final ensures your service always has the required dependency.
+
+2. Spring sees @Autowired and knows it must pass an object of UserRepository when creating UserService.
+3. private → encapsulation → hide details from outside classes.
+   final → once assigned, can’t point to a new object.
+
+4. What is BCrypt?
+    - BCrypt is a password hashing algorithm.
+    - Instead of storing plain-text passwords in the database, we:
+        -   Hash the password → store only the hash.
+        -   When a user logs in, hash their input and compare hashes.
+    - BCrypt is strong because it:
+        -   Generates different hashes every time (even for the same password).
+        -   Adds a random salt to protect against rainbow table attacks.
+        -   Is slow by design → harder for hackers to brute force.
+    - Example:
+        -   Let’s say a user registers with: Password → “mySecret123”
+        -   When saved: Hashed → $2a$10$B5m1... (a long scrambled string)
+    - Every hash is unique, even for the same password.
+    - Verifying Passwords During Login:
+        -   boolean match = passwordEncoder.matches(rawPassword, storedHash);
+        -   Returns true if passwords match.
+    - Benefits of BCrypt :
+        -    Salting (protects against rainbow tables)
+        -    
+
+
+
+

@@ -31,6 +31,12 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
+        <!-- Spring Security (contains BCrypt) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
         <!-- MySQL Driver (or H2/PostgreSQL if you're using that instead) -->
         <dependency>
             <groupId>com.mysql</groupId>
@@ -51,7 +57,6 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
-
 
     </dependencies>
 
