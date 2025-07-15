@@ -105,11 +105,13 @@ mvn spring-boot:run
 
 ### Notes 
 A. UserRepositroy.java 
+    
     1. DAO Layer - Handles all database interactions via repositories. Keeps persistence logic separate from business logic.
     2. JpaRepository<User, Long> - A Spring Data JPA interface giving you built-in CRUD methods for the User entity with Long as the primary key
     3. Optional<User> - A safe way to handle the case when a user is not found, without risking null
 
 B. UserService.java
+    
     1. private final UserRepository userRepository;
         -   private: means only this class can directly access this field
         -   final: means the reference cannot be changed after it’s set once.
@@ -118,6 +120,7 @@ B. UserService.java
         -   Declaring it final ensures your service always has the required dependency.
     
     2. Spring sees @Autowired and knows it must pass an object of UserRepository when creating UserService.
+    
     3. private → encapsulation → hide details from outside classes.
        final → once assigned, can’t point to a new object.
     
@@ -143,6 +146,7 @@ B. UserService.java
             -    Secure default in modern applications
 
 C. UserController
+    
     -   @RestController - Tells Spring this class is a REST API.
         -   Automatically returns JSON (or plain text).
     -   @RequestMapping("/api")
@@ -155,6 +159,7 @@ C. UserController
         -   passwordEncoder.encode(request.getPassword())
 
 D. UserRegistrationRequest - DTO (This class represents the JSON payload the client sends to our endpoint.)
+    
     1.  What is DTO ?
         -   DTO = Data Transfer Object.
         -   It maps incoming JSON from the client → Java object.
@@ -165,6 +170,7 @@ D. UserRegistrationRequest - DTO (This class represents the JSON payload the cli
 
 
 E. SecurityConfig 
+    
     -   Spring Security blocks all requests by default
     -   We need to allow anonymous users to hit /api/register.
     -   csrf().disable() → disables CSRF protection for APIs.
