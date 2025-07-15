@@ -90,7 +90,7 @@ cd finguard-user-service
 mvn clean install
 mvn spring-boot:run
 
-'''
+```
 
 ---
 
