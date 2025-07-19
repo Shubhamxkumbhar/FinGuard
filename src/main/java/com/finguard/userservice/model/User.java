@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Entity representing a user in the database.
@@ -52,7 +53,8 @@ public class User {     // This Class defines the structure of the users table
     /**
      * User roles (e.g., USER, ADMIN).
      */
-    private String roles;
+    @ElementCollection(fetch = FetchType.EAGER)
+    private List<String> roles;
 
 
     private LocalDateTime createdAt = LocalDateTime.now();

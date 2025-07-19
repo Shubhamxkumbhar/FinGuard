@@ -3,7 +3,9 @@ package com.finguard.userservice.service;
 
 import com.finguard.userservice.model.User;
 import com.finguard.userservice.reporsitory.UserRepository;
+import com.finguard.userservice.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +33,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;  // Provides methods to hash and check passwords.
+    private final JwtUtil jwtUtil;
 
     // Constructor Injection (recommended over @Autowired field injection)
     /**
@@ -40,9 +43,10 @@ public class UserService {
      * @param passwordEncoder BCrypt encoder for secure password hashing.
      */
     @Autowired
-    public UserService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtUtil = jwtUtil;
     }
 
     /**
@@ -84,4 +88,23 @@ public class UserService {
     public boolean emailExists(String email){
         return userRepository.findByEmail(email).isPresent();
     }
+
+    /**
+     * Authenticates user and returns a JWT token if valid.
+     *
+     * @param rawPassword :  the plain-text password entered by the user on the login form (sent in the UserLoginRequest DTO).
+     */
+    public String login(String email, String rawPassword){
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadCredentialsException("Invalid Email or Password"));
+
+        // user.getPassword(): the hashed password fetched from the database.
+        if(!passwordEncoder.matches(rawPassword, user.getPassword())){
+            throw new BadCredentialsException("Invalid Email or Password");
+        }
+
+        return jwtUtil.generateToken(user.getEmail());
+    }
+
+
 }

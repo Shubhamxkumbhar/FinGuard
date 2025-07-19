@@ -1,16 +1,20 @@
 package com.finguard.userservice.controller;
 
 
+import com.finguard.userservice.dto.LoginRequest;
+import com.finguard.userservice.dto.LoginResponse;
 import com.finguard.userservice.dto.UserRegistrationRequest;
 import com.finguard.userservice.model.User;
 import com.finguard.userservice.reporsitory.UserRepository;
+import com.finguard.userservice.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Optional;
 
 /**
  * UserController handles all user-related HTTP requests.
@@ -38,6 +42,8 @@ public class UserController {
      */
     private BCryptPasswordEncoder passwordEncoder;
 
+    private UserService userService;
+
     /**
      * Constructor injection for UserRepository and BCryptPasswordEncoder.
      *
@@ -45,9 +51,10 @@ public class UserController {
      * @param passwordEncoder   Encoder for secure password hashing.
      */
     @Autowired // this is construction injection
-    public UserController(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder) {
+    public UserController(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, UserService userService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.userService = userService;
     }
 
     /**
@@ -79,6 +86,21 @@ public class UserController {
         userRepository.save(user);
 
         return "User registered successfully!";
+
+    }
+
+    /**
+     * Authenticates a user and returns a JWT token if successful.
+     */
+    @PostMapping("/login")
+    public ResponseEntity<?> loginUser(@Valid @RequestBody LoginRequest loginRequest){
+        try{
+            String token = userService.login(loginRequest.getEmail(), loginRequest.getPassword());
+            return ResponseEntity.ok(new LoginResponse(token));
+        } catch (BadCredentialsException e) {
+            return ResponseEntity.status(401).body("Invalid email or password.");
+        }
+
 
     }
 }

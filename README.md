@@ -82,7 +82,7 @@ user-service/
 
 ### Steps
 ```bash
-# Clone repo
+#1. Clone repo
 git clone https://github.com/your-username/finguard-user-service.git
 cd finguard-user-service
 
@@ -91,6 +91,50 @@ mvn clean install
 mvn spring-boot:run
 
 ```
+##2. MySQL Configuration
+    
+    -   Ensure your database is set up correctly:
+        CREATE DATABASE finguard;
+    -   Update your application.yml:
+            spring:
+                datasource:
+                    url: jdbc:mysql://localhost:3306/finguard
+                    username: root
+                    password: yourpassword
+
+
+##3. Register a User (/api/register)
+
+    -   Endpoint: POST http://localhost:8081/api/register
+    -   Headers: Content-Type: application/json
+    -   JSON Body:
+            {
+                "name": "Shubham",
+                "email": "shubham@example.com",
+                "password": "MySecret123"
+            }
+    -   Data will be securely hashed using BCrypt and stored in MySQL.
+
+##4.  Login and Get JWT Token (/api/login)
+
+    -   Endpoint: POST http://localhost:8081/api/login
+    -   Headers: Content-Type: application/json
+    -   JSON Body:
+            {
+                "email": "shubham@example.com",
+                "password": "MySecret123"
+            }
+    -    If credentials are correct, you'll receive:
+            {
+                 "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            }
+    -   If incorrect:
+            {
+                "error": "Invalid email or password"
+            }
+
+
+
 
 ---
 
@@ -103,7 +147,7 @@ mvn spring-boot:run
 | `/api/login`    | POST   | Login with JWT |
 
 
-### Notes 
+### Notes - Some Key Concepts 
 A. UserRepositroy.java 
     
     1. DAO Layer - Handles all database interactions via repositories. Keeps persistence logic separate from business logic.
@@ -202,6 +246,106 @@ E. SecurityConfig
     -   csrf().disable() → disables CSRF protection for APIs.
     -   .requestMatchers("/api/register").permitAll() → allows anyone to call /api/register.
 
+F. JwtUtil
+
+    -   We added a secure login mechanism using JWT (JSON Web Tokens) to authenticate users in a stateless, scalable way.
+    
+    -   What is JwtUtil?
+            -   JwtUtil is a utility class that performs operations related to JWTs. In our project, it's used to:
+                Generate a token when a user successfully logs in. 
+                Validate an incoming token to make sure it hasn’t been tampered with or expired.
+                Extract claims (like email/username) from the token.
+    -   What a Basic JwtUtil Class Does :
+                    package com.finguard.userservice.util;
+        
+                    import io.jsonwebtoken.*;
+                    import io.jsonwebtoken.security.Keys;
+                    import org.springframework.stereotype.Component;
+                    
+                    import java.security.Key;
+                    import java.util.Date;
+                    
+                    @Component
+                    public class JwtUtil {
+                    
+                        private final long expiration = 1000 * 60 * 60 * 24; // 24 hours
+                    
+                        // SECRET KEY (used for signing and validating token)
+                        private final Key key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+                    
+                        // 1. Generate JWT
+                        public String generateToken(String email) {
+                            return Jwts.builder()
+                                    .setSubject(email)                     // what user (email) this token is for
+                                    .setIssuedAt(new Date())               // when it was created
+                                    .setExpiration(new Date(System.currentTimeMillis() + expiration)) // expiry
+                                    .signWith(key)                         // signature using secret key
+                                    .compact();                            // convert to token string
+                        }
+                    
+                        // 2. Extract Email
+                        public String extractEmail(String token) {
+                            return parseToken(token).getBody().getSubject();
+                        }
+                    
+                        // 3. Validate Token
+                        public boolean isTokenValid(String token, String email) {
+                            String extractedEmail = extractEmail(token);
+                            return extractedEmail.equals(email) && !isTokenExpired(token);
+                        }
+                    
+                        // Check Expiry
+                        private boolean isTokenExpired(String token) {
+                            return parseToken(token).getBody().getExpiration().before(new Date());
+                        }
+                    
+                        // Parse and validate signature
+                        private Jws<Claims> parseToken(String token) {
+                            return Jwts.parserBuilder()
+                                    .setSigningKey(key)   // validate signature
+                                    .build()
+                                    .parseClaimsJws(token);
+                        }
+                    }
+            - Breakdown of Key Concepts
+                    1. @Component: Registers this class as a Spring Bean, so it can be @Autowired wherever needed.
+                    
+                    2. Key key = Keys.secretKeyFor(SignatureAlgorithm.HS256)
+                        This creates a random secret key used to sign the token.
+                        In production, you'll fetch this securely (e.g., from AWS Secrets Manager).
+                        HS256 is a common and secure HMAC algorithm.
+                    
+                    3. generateToken(String email)
+                        Takes in the user’s email and returns a signed JWT string.
+                        setSubject(email) stores email in token.
+                        setExpiration(...) sets how long token is valid (e.g., 24 hours).
+                        signWith(key) signs the token.
+                    
+                    4. extractEmail(String token)
+                       Returns the email (subject) from the token's payload.
+                    
+                    5. isTokenValid(token, email)
+                          Confirms the token: 
+                            Belongs to the same email.
+                            Hasn’t expired.
+                    
+                    6. parseClaimsJws(...)
+                       Parses the JWT string, validates the signature, and returns claims like subject, expiry, etc.
+                    
+                    🧪 Example JWT Format
+                    JWTs consist of 3 parts:
+                        EX:
+                        eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0QGVtYWlsLmNvbSIsImlhdCI6MTY5NzU5ODkwMCwiZXhwIjoxNjk3Njg1MzAwfQ.jN7...sign
+
+                        Header: Algorithm & token type
+                        Payload: Claims like subject (email), issued date, expiry
+                        Signature: Ensures token hasn’t been tampered with
+                    
+                    🛡 Why Use JWTs in Microservices?
+                        Stateless: Server doesn’t store sessions.
+                        Secure: Cannot be modified without invalidating the signature.
+                        Scalable: Easy to validate with just the secret key.
+
 
 ### TroubleShooting Logs:
         -   I was developing a user registration API in Spring Boot for the FinGuard platform.
@@ -280,33 +424,70 @@ E. SecurityConfig
             IntelliJ’s Local History can save your day!
 
 ### Test you APIs
+        A. /api/register 
+                1. /api/register - check is data stores in DB
+                    a.  POST http://localhost:8081/api/register       //Check the port for your application 
+                    b.  Header : Content-Type : application/json
+                    c.  JSON body: 
+                                    {
+                                        "name": "Shubham",
+                                        "email": "shubham@example.com",
+                                        "password": "MySecret123"
+                                    }
+        
+                2.  /api/register - Do field validation
+                        Send Bad request (missing password , missing email, etc)
+                    a.  POST http://localhost:8081/api/register
+                    b.  Bad Request: 
+                                    {
+                                        "name": "Shubham",
+                                        "email": "shubham@example.com",
+                                        "password": ""
+                                    }
+                    c.  Expected response:
+                                    {
+                                        "timestamp": "2025-07-15T17:30:10.612",
+                                        "status": 400,
+                                        "errors": [
+                                            "password : Password is required",
+                                            "password : Password must be between 8 and 20 characters"
+                                        ]
+                                    }
 
-        1. /api/register - check is data stores in DB
-            a.  POST http://localhost:8081/api/register       //Check the port for your application 
-            b.  Header : Content-Type : application/json
-            c.  JSON body: 
+        B. /api/login
+                    1. Test /api/login with Postman
+                        a. Endpoint: POST http://localhost:8081/api/login
+                        b. Header : Content-Type : application/json
+                        c. JSON Body
                             {
-                                "name": "Shubham",
                                 "email": "shubham@example.com",
                                 "password": "MySecret123"
                             }
 
-        2.  /api/register - Do field validation
-                Send Bad request (missing password , missing email, etc)
-            a.  POST http://localhost:8081/api/register
-            b.  Bad Request: 
+                    2. Expected Response (Success):
+                        If the credentials are valid, you should get:
                             {
-                                "name": "Shubham",
-                                "email": "shubham@example.com",
-                                "password": ""
+                                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                             }
-            c.  Expected response:
-                            {
-                                "timestamp": "2025-07-15T17:30:10.612",
-                                "status": 400,
-                                "errors": [
-                                    "password : Password is required",
-                                    "password : Password must be between 8 and 20 characters"
-                                ]
-                            }
+                         Status Code: 200 OK
+                        This token will be used in the Authorization header for future requests.
 
+                    3. Expected Response (Failure):
+                        If you enter wrong email or password, you’ll get:
+                            {
+                                "error": "Invalid email or password"
+                            }
+                        Status Code: 401 Unauthorized
+    
+                    4. I encountred 500 Internal Server Error 
+                            {
+                                "timestamp": "2025-07-19T18:30:55.370+00:00",
+                                "status": 500,
+                                "error": "Internal Server Error",
+                                "path": "/api/login"
+                            }
+                        Problem: 500 Internal Server Error when hitting /api/login, which means something failed inside my backend code 
+                                    — likely during authentication or token generation.
+                        Root Cause : Cannot invoke "com.finguard.userservice.service.UserService.login(String, String)" because "this.userService" is null
+                                     Spring Boot did not inject the UserService dependency into your UserController — so userService is null at runtime.
+                                     I forgot to include UserService in my UserController constructor during constructor injection.
