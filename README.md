@@ -168,6 +168,32 @@ D. UserRegistrationRequest - DTO (This class represents the JSON payload the cli
         -   Keeps your domain model decoupled from API contracts
         -   Prevents exposing sensitive fields
 
+    2. Field Validation:
+        -   Bean Validation (e.g. Jakarta Validation / Hibernate Validator) provides these standard annotations:
+                    @NotBlank – can’t be empty
+                    @Size(min, max) – controls length
+                    @Email – validates email format
+                    @Pattern(regexp = …) – regex-based checks
+        -   We can also validate our password field as 
+                    @NotBlank
+                    @Size(min = 8, max = 30)
+                    @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).+$",
+                                message = "Password must contain at least one uppercase letter, one lowercase letter, and one digit")
+                    private String password;
+
+        -    Example Regexes
+
+            | Requirement                | Regex                                                      |
+            | -------------------------- | ---------------------------------------------------------- |
+            | At least 8 chars, any char | `^.{8,}$`                                                  |
+            | At least one uppercase     | `.*[A-Z].*`                                                |
+            | At least one lowercase     | `.*[a-z].*`                                                |
+            | At least one digit         | `.*\\d.*`                                                  |
+            | At least one special char  | `.*[!@#$%^&*()].*`                                         |
+            | Combine all                | `^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()]).{8,}$` |
+
+
+
 
 E. SecurityConfig 
     
@@ -252,3 +278,35 @@ E. SecurityConfig
             Register all security beans in Spring Boot (e.g. BCryptPasswordEncoder).
             Debugging logs help pinpoint security issues.
             IntelliJ’s Local History can save your day!
+
+### Test you APIs
+
+        1. /api/register - check is data stores in DB
+            a.  POST http://localhost:8081/api/register       //Check the port for your application 
+            b.  Header : Content-Type : application/json
+            c.  JSON body: 
+                            {
+                                "name": "Shubham",
+                                "email": "shubham@example.com",
+                                "password": "MySecret123"
+                            }
+
+        2.  /api/register - Do field validation
+                Send Bad request (missing password , missing email, etc)
+            a.  POST http://localhost:8081/api/register
+            b.  Bad Request: 
+                            {
+                                "name": "Shubham",
+                                "email": "shubham@example.com",
+                                "password": ""
+                            }
+            c.  Expected response:
+                            {
+                                "timestamp": "2025-07-15T17:30:10.612",
+                                "status": 400,
+                                "errors": [
+                                    "password : Password is required",
+                                    "password : Password must be between 8 and 20 characters"
+                                ]
+                            }
+
