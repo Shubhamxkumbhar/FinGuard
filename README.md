@@ -635,4 +635,27 @@ G. How to run docker-compose.yaml and test it
             USE finguard;
             SHOW TABLES;
             SELECT * FROM users;
+
+
+
+
+
+### Unit Testing 
+
+1 .UserServiceTest.java
+         
+    This section includes thorough unit tests for the service layer using JUnit 5 and Mockito to ensure the integrity and reliability of core business logic.
+        
+    a. **UserService Tests**: Cover scenarios such as:
+            Valid user registration with password hashing verification.
+            Duplicate email registration rejection.
+            Edge case validation for null or missing inputs.
+            Successful login and authentication failure cases.
+
+    b. **Testing Tools and Annotations**:
+            @ExtendWith(MockitoExtension.class) to enable Mockito integration with JUnit 5.
+            @Mock annotations to mock dependencies like UserRepository, BCryptPasswordEncoder, and JwtUtil.
+            @InjectMocks to inject mocked dependencies into the tested UserService instance.
+            Use of verify() to assert method invocation on mocks.
+
             
