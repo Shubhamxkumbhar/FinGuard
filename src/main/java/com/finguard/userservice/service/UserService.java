@@ -1,14 +1,20 @@
 package com.finguard.userservice.service;
 
 
+import com.finguard.userservice.dto.LoginResponse;
 import com.finguard.userservice.model.User;
 import com.finguard.userservice.reporsitory.UserRepository;
 import com.finguard.userservice.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -27,9 +33,11 @@ import java.util.Optional;
  *   <li>Enables better testing and maintainability.</li>
  *   <li>Follows the principles of Clean Architecture.</li>
  * </ul>
+ *
+ * UserDetailsService is used by Spring Security to fetch user information during authentication.
  */
 @Service
-public class UserService {
+public class UserService implements UserDetailsService {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;  // Provides methods to hash and check passwords.
@@ -89,12 +97,13 @@ public class UserService {
         return userRepository.findByEmail(email).isPresent();
     }
 
+
     /**
-     * Authenticates user and returns a JWT token if valid.
-     *
+     * Authenticates the user using email and password.
+     * If successful, returns a LoginResponse with JWT token containing email and roles.
      * @param rawPassword :  the plain-text password entered by the user on the login form (sent in the UserLoginRequest DTO).
-     */
-    public String login(String email, String rawPassword){
+
+    public LoginResponse login(String email, String rawPassword){
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BadCredentialsException("Invalid Email or Password"));
 
@@ -103,8 +112,49 @@ public class UserService {
             throw new BadCredentialsException("Invalid Email or Password");
         }
 
-        return jwtUtil.generateToken(user.getEmail());
+        // TODO: Fetch real roles when implemented — using hardcoded "USER" role for now
+        List<String> roles = Collections.singletonList("USER");
+        String token = jwtUtil.generateToken(email, roles);
+
+        return new LoginResponse(token);
+    } */
+
+    /**
+     * Authenticates a user and generates JWT upon success.
+     *
+     * @param email    User's email
+     * @param rawPassword Raw password input
+     * @return JWT token string if authentication is successful
+     * @throws BadCredentialsException if email or password is invalid
+     */
+    public String login(String email, String rawPassword){
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() ->new BadCredentialsException("Invalid Email or Password"));
+
+        if(!passwordEncoder.matches(rawPassword, user.getPassword())){
+            throw new BadCredentialsException("Invalid Email or Password");
+        }
+
+        // Generate JWT with email + roles
+        return jwtUtil.generateToken(user.getEmail(), user.getRoles());
     }
 
+    /**
+     * Loads the user from the database by email and builds a Spring Security UserDetails object.
+     *
+     * @param email the email used as the username.
+     * @return a UserDetails object with username, password, and roles.
+     * @throws UsernameNotFoundException if the user is not found in the database.
+     */
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
+        return org.springframework.security.core.userdetails.User
+                .withUsername(user.getEmail())
+                .password(user.getPassword())
+                .roles(user.getRoles().toArray(new String[0])) // This will split comma-separated roles
+                .build();
+    }
 }

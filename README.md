@@ -135,16 +135,66 @@ mvn spring-boot:run
 
 
 
+| Component                            | Purpose                                                                                                                              |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `SecurityConfig`                     | Configures Spring Security: disables sessions, enables stateless JWT auth, allows `/api/login` and `/api/register`, protects others. |
+| `JwtAuthenticationFilter`            | Intercepts every request, extracts the JWT from header, validates it, and sets `SecurityContext`.                                    |
+| `JwtUtil`                            | Creates and validates JWT tokens.                                                                                                    |
+| `UserService` / `UserDetailsService` | Loads user info from DB for login flow.                                                                                              |
+| `BCryptPasswordEncoder`              | Secure password hashing.                                                                                                             |
 
 ---
 
 
 ### APIEndpoints(to be added)
 
-| Endpoint        | Method | Description    |
-| --------------- | ------ | -------------- |
-| `/api/register` | POST   | Register user  |
-| `/api/login`    | POST   | Login with JWT |
+| Endpoint         | Method | Description                          | Headers Required                  | Auth Required |
+|------------------|--------|--------------------------------------|-----------------------------------|---------------|
+| `/api/register`  | POST   | Register a new user                  | `Content-Type: application/json`  | ❌ No         |
+| `/api/login`     | POST   | Login with credentials, returns JWT  | `Content-Type: application/json`  | ❌ No         |
+| `/api/secure`    | GET    | Test protected endpoint with JWT     | `Authorization: Bearer <token>`   | ✅ Yes        |
+| `/api/profile`   | GET    | Fetch user profile (if implemented)  | `Authorization: Bearer <token>`   | ✅ Yes        |
+
+
+
+### How to Decode & Verify JWT Tokens
+
+    -   Once you receive a JWT from the /api/login endpoint, you can manually inspect and validate the token using the following methods:
+
+    -   Online Tool: jwt.io
+        -   Go to https://jwt.io
+        -   Paste the token into the left panel.
+        -   The right panel will show:
+        -   sub (email)
+        -   roles
+        -   iat (issued at)
+        -   exp (expiration)
+        -   ⚠️ Don’t paste sensitive tokens in production — use this only for testing.
+
+    -   Terminal Method (Linux/macOS)
+        -   If you just want to view the payload:
+            -   echo 'your.jwt.token.here' | cut -d '.' -f2 | base64 -d
+        -   If the JWT is Base64Url encoded (often the case), use:
+            -   echo 'your.jwt.token.here' | cut -d '.' -f2 | tr '_-' '/+' | base64 -d
+        -   If it give error try padding mannualy  (JWT payloads are often missing =):
+            -   PAYLOAD=$(echo 'your.jwt.token.here')
+                PADDED=$(printf "%s" "$PAYLOAD" | awk '{ while (length % 4 != 0) $0=$0"="; print }')
+                echo "$PADDED" | tr '_-' '/+' | base64 --decode
+        
+
+
+    -   What to Check in a JWT?
+            | Field   | Meaning                          | Example            |
+            | `sub`   | Subject — usually the user email | `user@example.com` |
+            | `roles` | User roles                       | `[ "USER" ]`       |
+            | `iat`   | Issued At (Unix Timestamp)       | `1720000000`       |
+            | `exp`   | Expiration (Unix Timestamp)      | `1720086400`       |
+
+        -   To convert timestamps into human-readable format:
+            -   date -d @1720086400
+
+
+
 
 
 ### Notes - Some Key Concepts 
@@ -235,8 +285,6 @@ D. UserRegistrationRequest - DTO (This class represents the JSON payload the cli
             | At least one digit         | `.*\\d.*`                                                  |
             | At least one special char  | `.*[!@#$%^&*()].*`                                         |
             | Combine all                | `^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()]).{8,}$` |
-
-
 
 
 E. SecurityConfig 
@@ -345,6 +393,59 @@ F. JwtUtil
                         Stateless: Server doesn’t store sessions.
                         Secure: Cannot be modified without invalidating the signature.
                         Scalable: Easy to validate with just the secret key.
+
+G. JWT Utility with Role-Based Claims
+    
+    -   To secure the authentication mechanism in our user-service, we added a custom JwtUtil class to generate and validate JWT tokens. 
+        These tokens are used to maintain a stateless session and carry essential user information like email and roles.
+
+    -    1.Features Implemented
+            -   JWT generation upon successful login.
+            -   JWT includes:
+                -   sub (email/username)
+                -   roles (custom claim with role list)
+            -   Methods to extract email and roles from token.
+            -   Token validation:
+                -   Verifies signature and expiry
+                -   Ensures token subject matches logged-in user
+    -    2.JWT Example Payload (Decoded)
+            {
+                "sub": "shubham@example.com",
+                "roles": ["USER"],
+                "iat": 1721662800,
+                "exp": 1721749200
+            }
+
+    -   3.How It Works
+        -   When the user logs in via /api/login:
+            -   Credentials are validated against the DB.
+            -   JWT is generated using JwtUtil.generateToken(email, roles). 
+            -   Token is returned to the client in the response body.
+        -   The client sends this JWT in the Authorization header for future requests:
+            -   Authorization: Bearer <token>
+
+        -    If credentials are wrong:
+            -   API responds with:
+                    {
+                            "error": "Invalid Email or Password"
+                    }
+            -   Status Code: 401 Unauthorized
+
+F. DTOs
+
+    | DTO Class                 | Purpose                         | Validations Present?                                           |             
+    | ------------------------- | ------------------------------- | -------------------------------------------------------------- |  
+    | `LoginRequest`            | Input payload for login         | Yes (`@NotBlank`)                                              |   
+    | `LoginResponse`           | Response payload containing JWT | No validations needed                                          |  
+    | `UserRegistrationRequest` | Input payload for registration  | Full validation (`@NotBlank`, `@Email`, `@Size`, `@Pattern`)   | 
+
+
+G. How to run docker-compose.yaml and test it 
+
+    1. docker-compose.yaml
+    2. docker ps
+    3. docker exec -it finguard-mysql mysql -u finguard_user -p
+       pass : finguard_pass 
 
 
 ### TroubleShooting Logs:
@@ -491,3 +592,47 @@ F. JwtUtil
                         Root Cause : Cannot invoke "com.finguard.userservice.service.UserService.login(String, String)" because "this.userService" is null
                                      Spring Boot did not inject the UserService dependency into your UserController — so userService is null at runtime.
                                      I forgot to include UserService in my UserController constructor during constructor injection.
+        
+        C. /api/secure — Protected Route
+                    
+                    1. Once User is registerd and token is generated from login api 
+                    2. Test /api/secure
+                        a. GET http://localhost:8081/api/secure
+                        b. Authorization: Bearer <your-token-from-login>
+                    3. Expected Result: 
+                        a. if token is valid 
+                            200 ok 
+                            (proctected content here)
+                        b. if token is missing or invalid
+                            403 Forbidden or 401 Unauthorized
+
+
+                        
+
+### Docker Setup
+
+1.  MySQL Docker Integration (For Local Development)
+    | Item               | Value               |
+    | ------------------ | ------------------- |
+    | **Container Name** | `mysql`             |
+    | **Image Used**     | `mysql:8.0`         |
+    | **Port Exposed**   | `3306:3306`         |
+    | **Database Name**  | `finguard`          |
+    | **Username**       | `root`              |
+    | **Password**       | (set via container) |
+
+    # Setup Instructions
+        a. Make sure the container is running: docker ps
+        b. You should see the MySQL container:
+                CONTAINER ID   IMAGE       PORTS           NAMES
+                8eba629cafce   mysql:8.0   3306->3306/tcp  mysql
+        c. To connect inside:
+                docker exec  -it mysql mysql -u root -p 
+                # Enter your password 
+    # DB & Table Validation:
+        Inside my sql terminal:
+            SHOW DATABASES;
+            USE finguard;
+            SHOW TABLES;
+            SELECT * FROM users;
+            

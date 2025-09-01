@@ -9,11 +9,13 @@ import com.finguard.userservice.reporsitory.UserRepository;
 import com.finguard.userservice.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.Optional;
 
 /**
@@ -40,9 +42,9 @@ public class UserController {
     /**
      * Encoder for hashing user passwords securely.
      */
-    private BCryptPasswordEncoder passwordEncoder;
+    private final BCryptPasswordEncoder passwordEncoder;
 
-    private UserService userService;
+    private final UserService userService;
 
     /**
      * Constructor injection for UserRepository and BCryptPasswordEncoder.
@@ -81,7 +83,7 @@ public class UserController {
         user.setName(request.getName());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setEmail(request.getEmail());
-        user.setRoles("USER");
+        user.setRoles(Collections.singletonList("USER"));   // This sets the default role as a list containing one value: "USER".
 
         userRepository.save(user);
 
@@ -91,16 +93,38 @@ public class UserController {
 
     /**
      * Authenticates a user and returns a JWT token if successful.
-     */
+
     @PostMapping("/login")
-    public ResponseEntity<?> loginUser(@Valid @RequestBody LoginRequest loginRequest){
-        try{
-            String token = userService.login(loginRequest.getEmail(), loginRequest.getPassword());
-            return ResponseEntity.ok(new LoginResponse(token));
-        } catch (BadCredentialsException e) {
-            return ResponseEntity.status(401).body("Invalid email or password.");
-        }
+    public ResponseEntity<LoginResponse> loginUser(@Valid @RequestBody LoginRequest loginRequest){
 
+            LoginResponse response = userService.login(loginRequest.getEmail(), loginRequest.getPassword());
+            return ResponseEntity.ok(response);
 
+    } */
+
+    /**
+     * Authenticates a user and returns a JWT token if successful.
+    */
+     @PostMapping("/login")
+     public ResponseEntity<?> loginUser(@Valid @RequestBody LoginRequest loginRequest){
+
+     try{
+         String token = userService.login(loginRequest.email, loginRequest.getPassword());
+         return ResponseEntity.ok(Collections.singletonMap("token", token));
+     }catch ( BadCredentialsException ex){
+         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                 .body(Collections.singletonMap("error", "Invalid Email or Password"));
+     }
+
+     }
+
+    /**
+     * A secured endpoint only accessible to authenticated users.
+     *
+     * @return a message showing secure data
+     */
+    @GetMapping("/secure")
+    public ResponseEntity<String> secureEndpoint() {
+        return ResponseEntity.ok("You have accessed a secured endpoint!");
     }
 }

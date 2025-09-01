@@ -52,6 +52,8 @@ public class User {     // This Class defines the structure of the users table
 
     /**
      * User roles (e.g., USER, ADMIN).
+     * code{ElementCollection}  - tells JPA to create a separate table for this list.
+     * fetch = FetchType.EAGER ensures roles are loaded with the user object (important for auth).
      */
     @ElementCollection(fetch = FetchType.EAGER)
     private List<String> roles;
