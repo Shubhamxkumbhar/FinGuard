@@ -1,7 +1,5 @@
 package com.finguard.userservice.service;
 
-
-import com.finguard.userservice.dto.LoginResponse;
 import com.finguard.userservice.model.User;
 import com.finguard.userservice.reporsitory.UserRepository;
 import com.finguard.userservice.util.JwtUtil;
@@ -13,8 +11,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 
 /**

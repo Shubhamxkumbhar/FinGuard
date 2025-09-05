@@ -439,6 +439,18 @@ F. DTOs
     | `LoginResponse`           | Response payload containing JWT | No validations needed                                          |  
     | `UserRegistrationRequest` | Input payload for registration  | Full validation (`@NotBlank`, `@Email`, `@Size`, `@Pattern`)   | 
 
+    Why Different DTOs?
+        Each API endpoint expects different data:
+            1. POST /api/register
+                    Needs: name, email, password
+                    Use UserRegistrationRequest
+            2. POST /api/login
+                    Needs: email, password
+                    Use LoginRequest
+            
+            3. Response from login
+                    Returns: JWT token or error
+                    Use LoginResponse or just return Map<String, String>
 
 G. How to run docker-compose.yaml and test it 
 
@@ -689,4 +701,21 @@ G. How to run docker-compose.yaml and test it
                                     JwtUtil.isTokenValid(token, email)
 
 
+### Integration Test
 
+        The `UserControllerTest` class includes integration tests for user registration, login, and JWT-protected endpoints.
+
+        1. Technologies Used:
+        - `@SpringBootTest` – Loads the full application context.
+          - `MockMvc` – Mocks HTTP requests for controller-level tests.
+          - `@MockBean` – Mocks `UserService`, `UserRepository`, and other dependencies.
+          - `@WithMockUser` – Simulates authenticated requests for security-protected endpoints.
+          - `ObjectMapper` – Converts Java objects to JSON and vice versa.
+          - `spring-security-test` – Required for JWT/security context testing.
+        
+        2. Covered Endpoints:
+        | Endpoint         | Method | Description                                |
+        |------------------|--------|--------------------------------------------|
+        | `/api/register`  | POST   | Registers a new user (valid/invalid cases) |
+        | `/api/login`     | POST   | Authenticates user and returns JWT token   |
+        | `/api/secure`    | GET    | Protected route, requires JWT              |

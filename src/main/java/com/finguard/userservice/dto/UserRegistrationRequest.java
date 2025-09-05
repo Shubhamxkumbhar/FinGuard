@@ -9,6 +9,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.List;
+
 
 /**
  * DTO for user registration request payload.
@@ -43,4 +45,8 @@ public class UserRegistrationRequest {
             message = "Password must contain at least one uppercase letter, one lowercase letter, and one digit")
     private String password;
 
+    /**
+     * Roles requested during registration. Optional; defaults to ["USER"] if empty.
+     */
+    private List<String> roles;
 }
