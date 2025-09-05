@@ -40,7 +40,6 @@ public class JwtUtil {
      */
     public String generateToken(String email, List<String> roles) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + expirationMillis);
 
         return Jwts.builder()
                 .setSubject(email)              // Set email as the subject claim

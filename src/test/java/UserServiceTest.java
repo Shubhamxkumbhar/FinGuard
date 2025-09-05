@@ -9,6 +9,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.util.Collections;
@@ -109,6 +111,7 @@ public class UserServiceTest {
      *
      * @throws AssertionError if the assertion fails.
      */
+    @Test
     void testEmailExists_returnFalseIfNotExists(){
         //Given
         String email = "Shubham123@gmail.com";
@@ -264,4 +267,50 @@ public class UserServiceTest {
 
         assertEquals("Email and Password cannot be null", exception.getMessage());
     }
+
+
+    /**
+     * Tests that {@code loadUserByUsername} returns a valid {@link UserDetails} object
+     * when the user exists in the database.
+     *
+     * <p>This test verifies that:</p>
+     * <ul>
+     *   <li>The returned username and password match the stored user.</li>
+     *   <li>The returned authorities contain the expected role (e.g., ROLE_USER).</li>
+     * </ul>
+     *
+     * <p>Note: ROLE_ prefix is automatically added by Spring Security for roles.</p>
+     */
+    @Test
+    void testLoadUserByUsername_success() {
+        User user = new User();
+        user.setEmail("shubham@gamil.com");
+        user.setPassword("hashedPassword");
+        user.setRoles(Collections.singletonList("USER"));
+
+        when(userRepository.findByEmail("shubham@gmail.com")).thenReturn(Optional.of(user));
+
+        UserDetails details = userService.loadUserByUsername("shubham@gmail.com");
+
+        assertEquals("shubham@gamil.com", details.getUsername());
+        assertEquals("hashedPassword", details.getPassword());
+        assertTrue(details.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_USER")));
+    }
+
+    /**
+     * Tests that {@code loadUserByUsername} throws a {@link UsernameNotFoundException}
+     * when the user does not exist in the database.
+     *
+     * <p>This ensures proper exception handling during authentication for nonexistent users.</p>
+     */
+    @Test
+    void testLoadUserByUsername_userNotFound() {
+        when(userRepository.findByEmail("shubham@gmail.com")).thenReturn(Optional.empty());
+
+        assertThrows(UsernameNotFoundException.class, () -> {
+            userService.loadUserByUsername("shubham@gmail.com");
+        });
+    }
+
 }
