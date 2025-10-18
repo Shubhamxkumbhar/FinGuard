@@ -25,11 +25,40 @@ import java.util.List;
 public class JwtUtil {
 
     // Secret key for signing the token (in real-world apps, load from environment/secure vault)
-    // Keys.secretKeyFor(SignatureAlgorithm.HS256): Generates a secure HMAC key.
-    private final Key secretKey = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+    private final Key secretKey;
 
-    // // Token validity: 24 hours
-    private final long expirationMillis = 1000 * 60 * 60 * 24;
+    // Token validity: 24 hours by default
+    private final long expirationMillis;
+
+    /**
+     * Creates a JWT utility with the default 24-hour expiration window.
+     */
+    public JwtUtil() {
+        this(Keys.secretKeyFor(SignatureAlgorithm.HS256), 1000L * 60 * 60 * 24);
+    }
+
+    /**
+     * Package-private constructor primarily for tests, allowing expiration override.
+     */
+    JwtUtil(long expirationMillis) {
+        this(Keys.secretKeyFor(SignatureAlgorithm.HS256), expirationMillis);
+    }
+
+    private JwtUtil(Key secretKey, long expirationMillis) {
+        this.secretKey = secretKey;
+        this.expirationMillis = expirationMillis;
+    }
+
+    /**
+     * Creates a {@link JwtUtil} instance with a custom expiration window. Intended for testing
+     * scenarios where short-lived tokens are required.
+     *
+     * @param expirationMillis the token validity period in milliseconds
+     * @return a JwtUtil instance configured with the requested expiration
+     */
+    public static JwtUtil withExpiration(long expirationMillis) {
+        return new JwtUtil(expirationMillis);
+    }
 
     /**
      * Generates a JWT token for a given email and list of user roles.
@@ -44,8 +73,8 @@ public class JwtUtil {
         return Jwts.builder()
                 .setSubject(email)              // Set email as the subject claim
                 .claim("roles",roles)       // Add custom claim for roles
-                .setIssuedAt(new Date())       // Current time (token creation time)
-                .setExpiration(new Date(System.currentTimeMillis() + expirationMillis))     // Expiration time
+                .setIssuedAt(now)       // Current time (token creation time)
+                .setExpiration(new Date(now.getTime() + expirationMillis))     // Expiration time
                 .signWith(secretKey)     // Sign using HS256 and secret key
                 .compact();             // Build and return token as string
     }
@@ -66,7 +95,7 @@ public class JwtUtil {
      * @param token the JWT token
      * @return the list of roles extracted from the "roles" claim
      */
-    public List extractRoles(String token) {
+    public List<String> extractRoles(String token) {
         return parseToken(token).getBody().get("roles", List.class);
     }
 
@@ -90,7 +119,7 @@ public class JwtUtil {
      * @param token the JWT token
      * @return true if the token is expired, false otherwise
      */
-    private boolean isTokenExpired(String token) {
+    public boolean isTokenExpired(String token) {
         return parseToken(token).getBody().getExpiration().before(new Date());
     }
 

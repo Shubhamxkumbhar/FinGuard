@@ -1,34 +1,23 @@
-import com.finguard.userservice.util.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Arrays;
 import java.util.List;
 
-import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Unit tests for {@link JwtUtil} class.
- * These tests verify JWT token generation, validation, and parsing.
- */
 public class JwtUtilTest {
 
-    private JwtUtil jwtUtil;
+    private com.finguard.userservice.util.JwtUtil jwtUtil;
 
     @BeforeEach
-    void setUp() {
-        jwtUtil = new JwtUtil();
+    public void setUp() {
+        jwtUtil = new com.finguard.userservice.util.JwtUtil();
     }
 
     @Test
-    void testGenerateToken_containsCorrectEmail(){
-
-        String email = "shubham@gmail.com";
-        List<String> roles = Arrays.asList("USER", "ADMIN");
+    public void generateToken_containsCorrectEmail() {
+        String email = "user@example.com";
+        List<String> roles = List.of("USER", "ADMIN");
 
         String token = jwtUtil.generateToken(email, roles);
 
@@ -36,91 +25,57 @@ public class JwtUtilTest {
         assertEquals(email, jwtUtil.extractEmail(token));
     }
 
-    /**
-     * Tests that roles are correctly embedded and can be extracted from the token.
-     */
     @Test
-    void testGenerateToken_containRoles(){
+    public void generateToken_containsRoles() {
+        List<String> roles = List.of("USER", "ADMIN");
+        String token = jwtUtil.generateToken("user@example.com", roles);
 
-        String email = "shubham@gmail.com";
-        List<String> roles = Arrays.asList("USER", "ADMIN");
-
-        String token = jwtUtil.generateToken(email, roles);
         List<String> extractedRoles = jwtUtil.extractRoles(token);
 
         assertNotNull(extractedRoles);
-        assertTrue(extractedRoles.contains("USER"));
-        assertTrue(extractedRoles.contains("ADMIN"));
+        assertTrue(extractedRoles.containsAll(roles));
     }
 
-    /**
-     * Tests that Token validations works for correct token and email
-     */
     @Test
-    void testIsTokenValid_validToken_returnsTrue(){
+    public void isTokenValid_returnsTrueForValidToken() {
+        String token = jwtUtil.generateToken("user@example.com", List.of("USER"));
 
-        String email = "shubham@gmail.com";
-        List<String> roles = Arrays.asList("USER", "ADMIN");
-
-        String token = jwtUtil.generateToken(email, roles);
-
-        assertTrue(jwtUtil.isTokenValid(token, email));
-
+        assertTrue(jwtUtil.isTokenValid(token, "user@example.com"));
     }
 
-    /**
-     * Tests that extractEmail correctly returns the subject from the token.
-     */
     @Test
-    void testExtractEmail_success() {
-        String token = jwtUtil.generateToken("shubham@gmail.com", List.of("USER"));
+    public void extractEmail_returnsSubject() {
+        String token = jwtUtil.generateToken("user@example.com", List.of("USER"));
 
-
-        String extractedEmail = jwtUtil.extractEmail(token);
-
-
-        assertEquals("shubham@gmail.com", extractedEmail);
+        assertEquals("user@example.com", jwtUtil.extractEmail(token));
     }
 
-
-    /**
-     * Tests that extractRoles correctly returns a list of roles.
-     */
     @Test
-    void testExtractRoles_success() {
+    public void extractRoles_returnsRoles() {
         List<String> roles = List.of("USER", "ADMIN");
-        String token = jwtUtil.generateToken("shubham@gmail.com", roles);
-
+        String token = jwtUtil.generateToken("user@example.com", roles);
 
         List<String> extracted = jwtUtil.extractRoles(token);
-
 
         assertEquals(roles.size(), extracted.size());
         assertTrue(extracted.containsAll(roles));
     }
 
-    /**
-     * Tests that Token validations fails for mismatched email
-     */
     @Test
-    void testIsTokenValid_invalidEmail_returnsFalse(){
+    public void isTokenValid_returnsFalseForDifferentEmail() {
+        String token = jwtUtil.generateToken("user@example.com", List.of("USER"));
 
-        String token = jwtUtil.generateToken("shubham@gmail.com", List.of("USER"));
-
-        assertFalse(jwtUtil.isTokenValid(token, "wrongemail@gmail.com"));
+        assertFalse(jwtUtil.isTokenValid(token, "other@example.com"));
     }
 
-    /**
-     * Tests that expired token fails validation.
-     * Note: This test may require a modified JwtUtil with injectable expiration for test.
-     */
     @Test
-    void testIsTokenExpired_falseForValidToken(){
-        String token = jwtUtil.generateToken("shubham@gmail.com", List.of("USER"));
+    public void isTokenExpired_returnsTrueForExpiredToken() throws InterruptedException {
+        com.finguard.userservice.util.JwtUtil shortLivedJwt = com.finguard.userservice.util.JwtUtil.withExpiration(1);
+        String token = shortLivedJwt.generateToken("user@example.com", List.of("USER"));
 
-        assertFalse(jwtUtil.isTokenValid(token, "wrongemail@gmail.com"));
+        Thread.sleep(5);
+
+        assertTrue(shortLivedJwt.isTokenExpired(token));
+        assertFalse(shortLivedJwt.isTokenValid(token, "user@example.com"));
     }
-
-
-
 }
