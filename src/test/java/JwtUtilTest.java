@@ -70,7 +70,7 @@ public class JwtUtilTest {
 
     @Test
     public void isTokenExpired_returnsTrueForExpiredToken() throws InterruptedException {
-        com.finguard.userservice.util.JwtUtil shortLivedJwt = new com.finguard.userservice.util.JwtUtil(1);
+        com.finguard.userservice.util.JwtUtil shortLivedJwt = com.finguard.userservice.util.JwtUtil.withExpiration(1);
         String token = shortLivedJwt.generateToken("user@example.com", List.of("USER"));
 
         Thread.sleep(5);

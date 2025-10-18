@@ -50,6 +50,17 @@ public class JwtUtil {
     }
 
     /**
+     * Creates a {@link JwtUtil} instance with a custom expiration window. Intended for testing
+     * scenarios where short-lived tokens are required.
+     *
+     * @param expirationMillis the token validity period in milliseconds
+     * @return a JwtUtil instance configured with the requested expiration
+     */
+    public static JwtUtil withExpiration(long expirationMillis) {
+        return new JwtUtil(expirationMillis);
+    }
+
+    /**
      * Generates a JWT token for a given email and list of user roles.
      *
      * @param email the user's email (used as the subject of the token)
@@ -108,7 +119,7 @@ public class JwtUtil {
      * @param token the JWT token
      * @return true if the token is expired, false otherwise
      */
-    boolean isTokenExpired(String token) {
+    public boolean isTokenExpired(String token) {
         return parseToken(token).getBody().getExpiration().before(new Date());
     }
 
