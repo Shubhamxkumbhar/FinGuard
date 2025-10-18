@@ -26,7 +26,7 @@ import static org.mockito.Mockito.*;
  * Unit tests for {@link UserService}.
  */
 @ExtendWith(MockitoExtension.class)
-class UserServiceTest {
+public abstract class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
@@ -41,7 +41,7 @@ class UserServiceTest {
     private UserService userService;
 
     @Test
-    void registerUser_successful() {
+    public void registerUser_successful() {
         UserRegistrationRequest request = new UserRegistrationRequest(
                 "Shubham",
                 "shubham@gmail.com",
@@ -62,7 +62,7 @@ class UserServiceTest {
     }
 
     @Test
-    void registerUser_assignsDefaultRoleWhenMissing() {
+    public void registerUser_assignsDefaultRoleWhenMissing() {
         UserRegistrationRequest request = new UserRegistrationRequest(
                 "Shubham",
                 "user@example.com",
@@ -80,7 +80,7 @@ class UserServiceTest {
     }
 
     @Test
-    void registerUser_duplicateEmail_throwsException() {
+    public void registerUser_duplicateEmail_throwsException() {
         UserRegistrationRequest request = new UserRegistrationRequest(
                 "Shubham",
                 "taken@example.com",
@@ -96,7 +96,7 @@ class UserServiceTest {
     }
 
     @Test
-    void registerUser_missingEmail_throwsException() {
+    public void registerUser_missingEmail_throwsException() {
         User user = new User();
         user.setPassword("password");
 
@@ -105,21 +105,21 @@ class UserServiceTest {
     }
 
     @Test
-    void emailExists_returnsTrueWhenEmailPresent() {
+    public void emailExists_returnsTrueWhenEmailPresent() {
         when(userRepository.findByEmail("exists@example.com")).thenReturn(Optional.of(new User()));
 
         assertTrue(userService.emailExists("exists@example.com"));
     }
 
     @Test
-    void emailExists_returnsFalseWhenEmailMissing() {
+    public void emailExists_returnsFalseWhenEmailMissing() {
         when(userRepository.findByEmail("missing@example.com")).thenReturn(Optional.empty());
 
         assertFalse(userService.emailExists("missing@example.com"));
     }
 
     @Test
-    void findByEmail_returnsUserWhenPresent() {
+    public void findByEmail_returnsUserWhenPresent() {
         User user = new User();
         user.setEmail("user@example.com");
         when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
@@ -131,7 +131,7 @@ class UserServiceTest {
     }
 
     @Test
-    void login_successfulReturnsToken() {
+    public void login_successfulReturnsToken() {
         User user = new User();
         user.setEmail("user@example.com");
         user.setPassword("hashed");
@@ -147,7 +147,7 @@ class UserServiceTest {
     }
 
     @Test
-    void login_defaultsRoleWhenMissing() {
+    public void login_defaultsRoleWhenMissing() {
         User user = new User();
         user.setEmail("user@example.com");
         user.setPassword("hashed");
@@ -162,14 +162,14 @@ class UserServiceTest {
     }
 
     @Test
-    void login_invalidEmail_throwsException() {
+    public void login_invalidEmail_throwsException() {
         when(userRepository.findByEmail("missing@example.com")).thenReturn(Optional.empty());
 
         assertThrows(BadCredentialsException.class, () -> userService.login("missing@example.com", "password"));
     }
 
     @Test
-    void login_invalidPassword_throwsException() {
+    public void login_invalidPassword_throwsException() {
         User user = new User();
         user.setEmail("user@example.com");
         user.setPassword("hashed");
@@ -181,7 +181,7 @@ class UserServiceTest {
     }
 
     @Test
-    void loadUserByUsername_success() {
+    public void loadUserByUsername_success() {
         User user = new User();
         user.setEmail("user@example.com");
         user.setPassword("hashed");
@@ -198,7 +198,7 @@ class UserServiceTest {
     }
 
     @Test
-    void loadUserByUsername_userNotFound() {
+    public void loadUserByUsername_userNotFound() {
         when(userRepository.findByEmail("missing@example.com")).thenReturn(Optional.empty());
 
         assertThrows(UsernameNotFoundException.class, () -> userService.loadUserByUsername("missing@example.com"));

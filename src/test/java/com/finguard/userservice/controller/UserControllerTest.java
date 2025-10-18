@@ -34,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(classes = com.finguard.userservice.UserServiceApplication.class)
 @AutoConfigureMockMvc
-class UserControllerTest {
+public abstract class UserControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -47,7 +47,7 @@ class UserControllerTest {
 
     @Test
     @DisplayName("POST /api/register - success")
-    void registerUser_success() throws Exception {
+    public void registerUser_success() throws Exception {
         when(userService.registerUser(any(UserRegistrationRequest.class))).thenReturn(new User());
 
         UserRegistrationRequest request = new UserRegistrationRequest(
@@ -68,7 +68,7 @@ class UserControllerTest {
 
     @Test
     @DisplayName("POST /api/register - duplicate email returns 409")
-    void registerUser_duplicateEmail() throws Exception {
+    public void registerUser_duplicateEmail() throws Exception {
         doThrow(new IllegalStateException("Email already registered.")).when(userService)
                 .registerUser(any(UserRegistrationRequest.class));
 
@@ -88,7 +88,7 @@ class UserControllerTest {
 
     @Test
     @DisplayName("POST /api/register - validation errors return structured response")
-    void registerUser_invalidPayload() throws Exception {
+    public void registerUser_invalidPayload() throws Exception {
         UserRegistrationRequest request = new UserRegistrationRequest(
                 " ",
                 "invalid",
@@ -105,7 +105,7 @@ class UserControllerTest {
 
     @Test
     @DisplayName("POST /api/login - success")
-    void loginUser_success() throws Exception {
+    public void loginUser_success() throws Exception {
         LoginRequest loginRequest = new LoginRequest("shubham@gmail.com", "Password1");
         when(userService.login("shubham@gmail.com", "Password1")).thenReturn("mocked-jwt-token");
 
@@ -118,7 +118,7 @@ class UserControllerTest {
 
     @Test
     @DisplayName("POST /api/login - invalid credentials")
-    void loginUser_invalidCredentials() throws Exception {
+    public void loginUser_invalidCredentials() throws Exception {
         LoginRequest loginRequest = new LoginRequest("shubham@gmail.com", "wrong");
         when(userService.login("shubham@gmail.com", "wrong"))
                 .thenThrow(new BadCredentialsException("Invalid Email or Password"));
@@ -133,7 +133,7 @@ class UserControllerTest {
     @Test
     @WithMockUser
     @DisplayName("GET /api/secure - returns secured message")
-    void secureEndpoint_accessGranted() throws Exception {
+    public void secureEndpoint_accessGranted() throws Exception {
         mockMvc.perform(get("/api/secure"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("You have accessed a secured endpoint!"));
@@ -141,7 +141,7 @@ class UserControllerTest {
 
     @Test
     @DisplayName("POST /api/register - captures requested roles")
-    void registerUser_capturesRoles() throws Exception {
+    public void registerUser_capturesRoles() throws Exception {
         User savedUser = new User();
         when(userService.registerUser(any(UserRegistrationRequest.class))).thenReturn(savedUser);
 
