@@ -1,19 +1,21 @@
-    package com.finguard.userservice.controller;
+package com.finguard.userservice.controller;
 
-    import com.finguard.userservice.dto.LoginRequest;
-    import com.finguard.userservice.dto.UserRegistrationRequest;
-    import com.finguard.userservice.model.User;
-    import com.finguard.userservice.reporsitory.UserRepository;
-    import com.finguard.userservice.service.UserService;
-    import jakarta.validation.Valid;
-    import org.springframework.beans.factory.annotation.Autowired;
-    import org.springframework.http.HttpStatus;
-    import org.springframework.http.ResponseEntity;
-    import org.springframework.security.authentication.BadCredentialsException;
-    import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-    import org.springframework.web.bind.annotation.*;
+import com.finguard.userservice.dto.LoginRequest;
+import com.finguard.userservice.dto.LoginResponse;
+import com.finguard.userservice.dto.UserRegistrationRequest;
+import com.finguard.userservice.service.UserService;
+import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-    import java.util.Collections;
+import java.util.Collections;
 
     /**
      * UserController handles all user-related HTTP requests.
@@ -26,35 +28,19 @@
      */
     @RestController
     @RequestMapping("/api")
-    public class UserController {
+public class UserController {
 
-       // @Autowired // instead of final can use this for field injection
-        // private  UserRepository userRepository;
+    private final UserService userService;
 
-        /**
-         * The repository for performing CRUD operations on User entities.
-         */
-        private final UserRepository userRepository;
-
-        /**
-         * Encoder for hashing user passwords securely.
-         */
-        private final BCryptPasswordEncoder passwordEncoder;
-
-        private final UserService userService;
-
-        /**
-         * Constructor injection for UserRepository and BCryptPasswordEncoder.
-         *
-         * @param userRepository    Repository for User entities.
-         * @param passwordEncoder   Encoder for secure password hashing.
-         */
-        @Autowired // this is construction injection
-        public UserController(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, UserService userService) {
-            this.userRepository = userRepository;
-            this.passwordEncoder = passwordEncoder;
-            this.userService = userService;
-        }
+    /**
+     * Constructor injection for dependencies.
+     *
+     * @param userService service coordinating user operations.
+     */
+    @Autowired
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
 
         /**
          * Registers a new user.
@@ -69,55 +55,32 @@
          * @return a confirmation message as a plain text response.
          */
 
-        @PostMapping("/register")
-        public String registerUser(@Valid @RequestBody UserRegistrationRequest request){
-            // check if email already exists
-            if(userRepository.findByEmail(request.getEmail()).isPresent()){
-                return "Email already registered.";
-            }
-
-            User user = new User();
-            user.setName(request.getName());
-            user.setPassword(passwordEncoder.encode(request.getPassword()));
-            user.setEmail(request.getEmail());
-            // Use provided roles if present, else default to "USER"
-            if (request.getRoles() == null || request.getRoles().isEmpty()) {
-                user.setRoles(Collections.singletonList("USER"));
-            } else {
-                user.setRoles(request.getRoles());
-            }
-            userRepository.save(user);
-
-            return "User Registered Successfully!";
-
+    @PostMapping("/register")
+    public ResponseEntity<String> registerUser(@Valid @RequestBody UserRegistrationRequest request) {
+        try {
+            userService.registerUser(request);
+            return ResponseEntity.ok("User Registered Successfully!");
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
         }
 
-        /**
-         * Authenticates a user and returns a JWT token if successful.
-
-        @PostMapping("/login")
-        public ResponseEntity<LoginResponse> loginUser(@Valid @RequestBody LoginRequest loginRequest){
-
-                LoginResponse response = userService.login(loginRequest.getEmail(), loginRequest.getPassword());
-                return ResponseEntity.ok(response);
-
-        } */
+    }
 
         /**
          * Authenticates a user and returns a JWT token if successful.
         */
-         @PostMapping("/login")
-         public ResponseEntity<?> loginUser(@Valid @RequestBody LoginRequest loginRequest){
+    @PostMapping("/login")
+    public ResponseEntity<?> loginUser(@Valid @RequestBody LoginRequest loginRequest){
 
-         try{
-             String token = userService.login(loginRequest.email, loginRequest.getPassword());
-             return ResponseEntity.ok(Collections.singletonMap("token", token));
-         }catch ( BadCredentialsException ex){
-             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                     .body(Collections.singletonMap("error", "Invalid Email or Password"));
-         }
+        try{
+            String token = userService.login(loginRequest.getEmail(), loginRequest.getPassword());
+            return ResponseEntity.ok(new LoginResponse(token));
+        }catch ( BadCredentialsException ex){
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Collections.singletonMap("error", "Invalid Email or Password"));
+        }
 
-         }
+    }
 
         /**
          * A secured endpoint only accessible to authenticated users.
@@ -125,7 +88,7 @@
          * @return a message showing secure data
          */
         @GetMapping("/secure")
-        public ResponseEntity<String> secureEndpoint() {
-            return ResponseEntity.ok("You have accessed a secured endpoint!");
-        }
+    public ResponseEntity<String> secureEndpoint() {
+        return ResponseEntity.ok("You have accessed a secured endpoint!");
     }
+}

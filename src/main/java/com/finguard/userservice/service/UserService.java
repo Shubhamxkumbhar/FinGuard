@@ -1,5 +1,6 @@
 package com.finguard.userservice.service;
 
+import com.finguard.userservice.dto.UserRegistrationRequest;
 import com.finguard.userservice.model.User;
 import com.finguard.userservice.reporsitory.UserRepository;
 import com.finguard.userservice.util.JwtUtil;
@@ -11,7 +12,10 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Service class for business logic related to user operations.
@@ -54,10 +58,29 @@ public class UserService implements UserDetailsService {
     }
 
     /**
+     * Registers a new user using the registration request payload.
+     *
+     * @param request the validated registration request.
+     * @return the persisted {@link User} instance.
+     */
+    public User registerUser(UserRegistrationRequest request) {
+        User user = new User();
+        user.setName(request.getName());
+        user.setEmail(request.getEmail());
+        user.setPassword(request.getPassword());
+        user.setRoles(request.getRoles());
+
+        return registerUser(user);
+    }
+
+    /**
      * Registers a new user in the system.
      *
      * <p>This method:
      * <ul>
+     *   <li>Validates the presence of required fields.</li>
+     *   <li>Ensures email uniqueness.</li>
+     *   <li>Normalises and defaults roles.</li>
      *   <li>Encodes the user's plain-text password using BCrypt.</li>
      *   <li>Saves the user entity to the database.</li>
      * </ul>
@@ -66,6 +89,31 @@ public class UserService implements UserDetailsService {
      * @return the saved user entity.
      */
     public User registerUser(User user){
+        if (user.getEmail() == null || user.getEmail().isBlank() ||
+                user.getPassword() == null || user.getPassword().isBlank()) {
+            throw new IllegalArgumentException("Email and password are required");
+        }
+
+        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+            throw new IllegalStateException("Email already registered.");
+        }
+
+        List<String> roles = user.getRoles();
+        if (roles == null || roles.isEmpty()) {
+            roles = List.of("USER");
+        } else {
+            roles = roles.stream()
+                    .filter(role -> role != null && !role.isBlank())
+                    .map(String::trim)
+                    .map(String::toUpperCase)
+                    .distinct()
+                    .collect(Collectors.toCollection(ArrayList::new));
+            if (roles.isEmpty()) {
+                roles = List.of("USER");
+            }
+        }
+        user.setRoles(roles);
+
         //Hash the Password
         String hashPassword = passwordEncoder.encode(user.getPassword());
         user.setPassword(hashPassword);
@@ -95,27 +143,6 @@ public class UserService implements UserDetailsService {
 
 
     /**
-     * Authenticates the user using email and password.
-     * If successful, returns a LoginResponse with JWT token containing email and roles.
-     * @param rawPassword :  the plain-text password entered by the user on the login form (sent in the UserLoginRequest DTO).
-
-    public LoginResponse login(String email, String rawPassword){
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new BadCredentialsException("Invalid Email or Password"));
-
-        // user.getPassword(): the hashed password fetched from the database.
-        if(!passwordEncoder.matches(rawPassword, user.getPassword())){
-            throw new BadCredentialsException("Invalid Email or Password");
-        }
-
-        // TODO: Fetch real roles when implemented — using hardcoded "USER" role for now
-        List<String> roles = Collections.singletonList("USER");
-        String token = jwtUtil.generateToken(email, roles);
-
-        return new LoginResponse(token);
-    } */
-
-    /**
      * Authenticates a user and generates JWT upon success.
      *
      * @param email    User's email
@@ -131,8 +158,13 @@ public class UserService implements UserDetailsService {
             throw new BadCredentialsException("Invalid Email or Password");
         }
 
+        List<String> roles = user.getRoles();
+        if (roles == null || roles.isEmpty()) {
+            roles = List.of("USER");
+        }
+
         // Generate JWT with email + roles
-        return jwtUtil.generateToken(user.getEmail(), user.getRoles());
+        return jwtUtil.generateToken(user.getEmail(), roles);
     }
 
     /**
